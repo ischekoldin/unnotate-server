@@ -4,7 +4,8 @@
   "description": "Backend for unNotate app",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon index.js",
+    "devstart": "nodemon index.js",
+    "start": "index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
