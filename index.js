@@ -27,7 +27,7 @@ app.post ("/signup", async (req, res) => {
 
         let usersWithThisNameOrEmail = await pool.query("SELECT * FROM users WHERE user_name = $1" +
             "OR user_email = $2", [name, email]);
-
+        console.log("we are through the promise");
         usersWithThisNameOrEmail = usersWithThisNameOrEmail.rowCount;
 
 
