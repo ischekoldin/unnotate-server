@@ -99,7 +99,7 @@ app.post ("/login", async (req, res) => {
                const refreshToken = await jwt.sign(name, process.env.REFRESH_TOKEN_SECRET);
                await refreshTokens.push(refreshToken);
 
-               res.cookie('refreshToken', refreshToken, { httpOnly: true, path: "/", credentials: "true", host: "unnotate-server.herokuapp.com"});
+               res.cookie('refreshToken', refreshToken, { httpOnly: true, path: "/", credentials: "true", host: ".herokuapp.com"});
                res.cookie('username', name, { httpOnly: false, path: "/notes" });
                res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
