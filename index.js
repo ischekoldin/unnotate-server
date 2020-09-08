@@ -6,16 +6,23 @@ const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 
+
 const app = express();
+
 const router = require('./router');
 const pool = require('./db/index');
 
 app.use(router);
 
 // middleware
-app.use(cors());
+app.use(cors({
+    origin : "http://localhost:3000",
+    credentials: true,
+    preflightContinue: true
+}));
 app.use(express.json());
 app.use(cookieParser());
+//app.options();
 
 
 
@@ -93,7 +100,7 @@ app.post ("/login", async (req, res) => {
                const refreshToken = await jwt.sign(name, process.env.REFRESH_TOKEN_SECRET);
                await refreshTokens.push(refreshToken);
 
-               res.cookie('refreshToken', refreshToken, { httpOnly: true, path: "/notes" });
+               res.cookie('refreshToken', refreshToken, { httpOnly: true, path: "/", credentials: "true"});
                res.cookie('username', name, { httpOnly: false, path: "/notes" });
                res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
@@ -113,18 +120,20 @@ app.post ("/login", async (req, res) => {
 
 let refreshTokens = [];
 
+
 app.get("/token", (req, res) => {
 
-    console.log(req.cookies);
+    //console.info(req.cookies);
     const refreshToken = req.cookies.refreshToken;
+    //console.info(req.cookies);
     //const refreshToken = req.body.token;
-    if (!refreshToken) return res.send("No refresh token");
-    if (!refreshTokens.includes(refreshToken)) return res.send("Token is invalid");
+    if (!refreshToken) return res.sendStatus(403);
+    if (!refreshTokens.includes(refreshToken)) return res.sendStatus(403);
     jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
         if (err) return res.send(err.message);
         const accessToken = generateAccessToken({name: user});
         console.log(accessToken);
-        return res.json({accessToken: accessToken});
+        return res.json({accessToken: accessToken, name: user});
     });
 });
 
