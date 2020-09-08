@@ -16,7 +16,7 @@ app.use(router);
 
 // middleware
 app.use(cors({
-    origin : "https://unnotate-client.herokuapp.com",
+    origin : "http://unnotate-client.herokuapp.com",
     credentials: true,
     preflightContinue: true
 }));
