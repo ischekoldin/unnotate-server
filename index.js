@@ -16,13 +16,12 @@ app.use(router);
 
 // middleware
 app.use(cors({
-    origin : "http://localhost:3000",
+    origin : "http://unnotate-client.herokuapp.com",
     credentials: true,
     preflightContinue: true
 }));
 app.use(express.json());
 app.use(cookieParser());
-//app.options();
 
 
 
