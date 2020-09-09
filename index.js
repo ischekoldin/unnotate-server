@@ -111,7 +111,7 @@ app.post ("/login", async (req, res) => {
                const refreshToken = await jwt.sign(name, process.env.REFRESH_TOKEN_SECRET);
                await refreshTokens.push(refreshToken);
 
-               res.cookie('refreshToken', refreshToken, { httpOnly: true });
+               res.cookie('refreshToken', refreshToken, { httpOnly: true, sameSite: "none", secure: true });
                res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
             } else {
