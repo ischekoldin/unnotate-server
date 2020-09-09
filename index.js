@@ -15,10 +15,24 @@ const pool = require('./db/index');
 app.use(router);
 
 // middleware
-app.use(cors({
-    credentials: true,
-    preflightContinue: true
-}));
+
+let CORS_OPTIONS;
+
+if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+    CORS_OPTIONS = {
+        origin: "http://localhost",
+        credentials: true,
+        preflightContinue: true
+    }
+} else {
+    CORS_OPTIONS = {
+        origin: "http://heroku-client.herokuapp.com",
+        credentials: true,
+        preflightContinue: true
+    }
+}
+
+app.use(cors(CORS_OPTIONS));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -98,7 +112,7 @@ app.post ("/login", async (req, res) => {
                const refreshToken = await jwt.sign(name, process.env.REFRESH_TOKEN_SECRET);
                await refreshTokens.push(refreshToken);
 
-               res.cookie('refreshToken', refreshToken, { httpOnly: true, path: "/", credentials: "include"});
+               res.cookie('refreshToken', refreshToken, { httpOnly: true, path: "/"});
                res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
             } else {
