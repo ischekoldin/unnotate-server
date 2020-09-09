@@ -98,7 +98,7 @@ app.post ("/login", async (req, res) => {
                const refreshToken = await jwt.sign(name, process.env.REFRESH_TOKEN_SECRET);
                await refreshTokens.push(refreshToken);
 
-               res.cookie('refreshToken', refreshToken, { httpOnly: true, path: "/", credentials: "include", host: ".herokuapp.com"});
+               res.cookie('refreshToken', refreshToken, { httpOnly: true, path: "/", credentials: "include"});
                res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
             } else {
