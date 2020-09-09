@@ -20,7 +20,7 @@ let CORS_OPTIONS;
 
 if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
     CORS_OPTIONS = {
-        origin: "http://localhost",
+        origin: "http://localhost:3000",
         credentials: true,
         preflightContinue: true
     }
@@ -46,7 +46,6 @@ app.post ("/signup", async (req, res) => {
 
         let usersWithThisNameOrEmail = await pool.query("SELECT * FROM users WHERE user_name = $1" +
             "OR user_email = $2", [name, email]);
-        console.log("we are through the promise");
         usersWithThisNameOrEmail = usersWithThisNameOrEmail.rowCount;
 
 
@@ -112,7 +111,7 @@ app.post ("/login", async (req, res) => {
                const refreshToken = await jwt.sign(name, process.env.REFRESH_TOKEN_SECRET);
                await refreshTokens.push(refreshToken);
 
-               res.cookie('refreshToken', refreshToken, { httpOnly: true, path: "/"});
+               res.cookie('refreshToken', refreshToken, { httpOnly: true, path: "/", domain: "localhost"});
                res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
             } else {
@@ -134,7 +133,7 @@ let refreshTokens = [];
 
 app.get("/token", (req, res) => {
 
-    //console.info(req.cookies);
+    console.info(req.cookies);
     const refreshToken = req.cookies.refreshToken;
     //console.info(req.cookies);
     //const refreshToken = req.body.token;
