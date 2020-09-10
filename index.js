@@ -112,7 +112,7 @@ app.post ("/login", async (req, res) => {
                await refreshTokens.push(refreshToken);
 
                res.cookie('unnotateRememberMe', rememberMe, { httpOnly: false, sameSite: "none", secure: true });
-               res.cookie('refreshToken', refreshToken, { httpOnly: true, sameSite: "none", secure: true });
+               res.cookie('refreshToken', refreshToken, { expires: new Date(Date.now() + 900000), httpOnly: true, sameSite: "none", secure: true });
                res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
             } else {
