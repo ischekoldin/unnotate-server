@@ -26,7 +26,7 @@ if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
     }
 } else {
     CORS_OPTIONS = {
-        origin: "http://unnotate-client.herokuapp.com",
+        origin: "https://unnotate-client.herokuapp.com",
         credentials: true,
         preflightContinue: true
     }
