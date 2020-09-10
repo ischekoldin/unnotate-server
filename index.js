@@ -136,7 +136,7 @@ let refreshTokens = [];
 
 app.get("/token", (req, res) => {
 
-    console.info(req.cookies);
+    console.info(`Receiving cookies ${req.cookies}`);
     const refreshToken = req.cookies.refreshToken;
     //console.info(req.cookies);
     //const refreshToken = req.body.token;
@@ -145,7 +145,7 @@ app.get("/token", (req, res) => {
     jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
         if (err) return res.send(err.message);
         const accessToken = generateAccessToken({name: user});
-        console.log(accessToken);
+        //console.log(accessToken);
         return res.json({accessToken: accessToken, name: user});
     });
 });
