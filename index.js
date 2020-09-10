@@ -137,6 +137,7 @@ let refreshTokens = [];
 app.get("/token", (req, res) => {
 
     console.info(req.cookies);
+    console.info(refreshTokens);
     const refreshToken = req.cookies.refreshToken;
     //console.info(req.cookies);
     //const refreshToken = req.body.token;
