@@ -94,7 +94,7 @@ async function checkPassword (name, password) {
 
 app.post ("/login", async (req, res) => {
 
-    const { name, password } = req.body;
+    const { name, password, rememberMe } = req.body;
 
     try {
         const dbResponse = await pool.query("SELECT * FROM users WHERE user_name = $1", [name]);
@@ -111,6 +111,7 @@ app.post ("/login", async (req, res) => {
                const refreshToken = await jwt.sign(name, process.env.REFRESH_TOKEN_SECRET);
                await refreshTokens.push(refreshToken);
 
+               res.cookie('unnotateRememberMe', rememberMe, { httpOnly: false, sameSite: "lax" });
                res.cookie('refreshToken', refreshToken, { httpOnly: true, sameSite: "lax" });
                res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
