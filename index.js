@@ -37,6 +37,8 @@ app.use(express.json());
 app.use(cookieParser());
 
 
+let errors = [];
+
 
 app.post ("/signup", async (req, res) => {
 
@@ -59,10 +61,11 @@ app.post ("/signup", async (req, res) => {
             res.send('User successfully added');
 
         } else {
-            res.send(`User with name ${name} or email ${email} already exists`);
+            errors.push({place: "post /signup", error: `User with name ${name} or email ${email} already exists`});
+            res.sendStatus(403);
         }
     } catch (err) {
-        console.error(err.message);
+        errors.push({place: "post /signup", error: err.message});
     }
 });
 
@@ -88,13 +91,13 @@ async function checkPassword (name, password) {
         }
 
     } catch (err) {
-        console.error(err.message);
+        errors.push({place: "checkPassword function", error: err.message});
     }
 }
 
 app.post ("/login", async (req, res) => {
 
-    const { name, password, rememberMe } = req.body;
+    const { name, password } = req.body;
 
     try {
         const dbResponse = await pool.query("SELECT * FROM users WHERE user_name = $1", [name]);
@@ -107,7 +110,7 @@ app.post ("/login", async (req, res) => {
 
             // check the password
             if (isPasswordCorrect) {
-               const accessToken = generateAccessToken({name});
+               const accessToken = await generateAccessToken({name});
                const refreshToken = await jwt.sign(name, process.env.REFRESH_TOKEN_SECRET);
                await refreshTokens.push(refreshToken);
 
@@ -117,15 +120,17 @@ app.post ("/login", async (req, res) => {
                res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
             } else {
-                res.send("Password is incorrect");
+                errors.push({place: "post /login", error: "Password is incorrect"});
+                res.sendStatus(401);
             }
 
         } else {
-            res.send("User Database has been corrupted");
+            errors.push({place: "post /login", error: "User database has been corrupted"});
+            res.sendStatus(500);
         }
 
     } catch (err) {
-        console.error(err.message);
+        errors.push({place: "post /login", error: err.message});
     }
 
 });
@@ -135,27 +140,19 @@ let refreshTokens = [];
 
 app.get("/token", (req, res) => {
 
-    console.info(req.cookies);
-    console.info(refreshTokens);
     const refreshToken = req.cookies.refreshToken;
-    //console.info(req.cookies);
-    //const refreshToken = req.body.token;
-    if (!refreshToken) return res.sendStatus(403);
-    if (!refreshTokens.includes(refreshToken)) return res.sendStatus(403);
+    if (!refreshToken) return res.sendStatus(401);
+    if (!refreshTokens.includes(refreshToken)) return res.sendStatus(401);
     jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
         if (err) return res.send(err.message);
         const accessToken = generateAccessToken({name: user});
-        //console.log(accessToken);
         return res.json({accessToken: accessToken, name: user});
     });
 });
 
 
 app.delete("/logout", (req, res) => {
-    console.log(refreshTokens);
-    console.info(req.cookies);
     refreshTokens = refreshTokens.filter(token => token !== req.cookies.refreshToken);
-    console.log(refreshTokens);
     res.sendStatus(204);
 });
 
@@ -256,6 +253,9 @@ function generateAccessToken(user) {
     return  jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: TOKEN_EXPIRATION_TIME });
 }
 
+app.get('/errors', (req, res) => {
+    res.send(errors && errors);
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
