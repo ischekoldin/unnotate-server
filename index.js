@@ -113,8 +113,7 @@ app.post ("/login", async (req, res) => {
 
                let date = new Date();
                date.setTime(date.setTime(date.getTime()+(14*24*60*60*1000)));
-               res.cookie('unnotateRememberMe', rememberMe, { expires: date, httpOnly: false, sameSite: "lax" });
-               res.cookie('refreshToken', refreshToken, { expires: date, httpOnly: true, sameSite: "lax" });
+               res.cookie('refreshToken', refreshToken, { expires: date, httpOnly: true, sameSite: "none", secure: true });
                res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
             } else {
