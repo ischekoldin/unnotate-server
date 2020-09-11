@@ -5,6 +5,7 @@ const cors = require('cors');
 const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
+const utils = require("./utils/utils");
 
 
 const app = express();
@@ -14,24 +15,29 @@ const pool = require('./db/index');
 
 app.use(router);
 
-// middleware
+
 
 let CORS_OPTIONS;
+let REFRESH_TOKEN_COOKIE_OPTIONS;
 
 if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
     CORS_OPTIONS = {
         origin: "http://localhost:3000",
         credentials: true,
         preflightContinue: true
-    }
+    };
+    REFRESH_TOKEN_COOKIE_OPTIONS = { expires: utils.cookieExpiresIn(14), httpOnly: true, sameSite: "lax"};
+
 } else {
     CORS_OPTIONS = {
         origin: "https://unnotate-client.herokuapp.com",
         credentials: true,
         preflightContinue: true
-    }
+    };
+    REFRESH_TOKEN_COOKIE_OPTIONS = { expires: utils.cookieExpiresIn(14), httpOnly: true, sameSite: "none", secure: true};
 }
 
+// middleware
 app.use(cors(CORS_OPTIONS));
 app.use(express.json());
 app.use(cookieParser());
@@ -114,9 +120,7 @@ app.post ("/login", async (req, res) => {
                const refreshToken = await jwt.sign(name, process.env.REFRESH_TOKEN_SECRET);
                await refreshTokens.push(refreshToken);
 
-               let date = new Date();
-               date.setTime(date.setTime(date.getTime()+(14*24*60*60*1000)));
-               res.cookie('refreshToken', refreshToken, { expires: date, httpOnly: true, sameSite: "none", secure: true });
+               res.cookie('refreshToken', refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
                res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
             } else {
@@ -165,6 +169,7 @@ app.get("/notes", authenticateToken, async (req, res) => {
 });
 
 app.post("/notes/add", authenticateToken, async (req, res) => {
+
     const {
         noteTitle,
         noteText,
@@ -182,6 +187,7 @@ app.post("/notes/add", authenticateToken, async (req, res) => {
     } catch (err) {
         console.error(err.message);
     }
+
 });
 
 app.post("/notes/delete", authenticateToken, async (req, res) => {
@@ -212,19 +218,25 @@ app.post("/notes/save_active", authenticateToken, async (req, res) => {
     }
 });
 
+// TODO get rid of callbacks and add feedback
 app.post("/auth/change_password", async (req, res) => {
-    const { user, currentPassword, newPassword } = req.body;
+    const { user, oldPassword, newPassword } = req.body;
 
     try {
-        const checkPasswordResponse = await checkPassword(user, currentPassword);
+        const checkPasswordResponse = await checkPassword(user, oldPassword);
         if (checkPasswordResponse === 'password is correct') {
-            const changePasswordResponse = await pool.query("UPDATE users SET user_password=$1 WHERE user_name=$2",
-                [user, newPassword]);
+            const saltRounds = 10;
+            let changePasswordResponse;
+            await bcrypt.hash(newPassword, saltRounds, (err, hashedPassword) => {
+                changePasswordResponse =  pool.query ("UPDATE users SET user_password=$1 WHERE user_name=$2",
+                    [hashedPassword, user]);
+            });
         }
         res.sendStatus(200);
+
     } catch (err) {
-        if (err.message === 'password is incorrect') return await res.send('password is incorrect');
-        if (err.message === 'user not found') return await res.send('user not found');
+        if (err.message === 'password is incorrect') return res.send('password is incorrect');
+        if (err.message === 'user not found') return res.send('user not found');
         console.error(err.message);
     }
 });
