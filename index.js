@@ -17,7 +17,7 @@ app.use(router);
 
 
 
-let CORS_OPTIONS = CORS_OPTIONS = {
+const CORS_OPTIONS = {
     origin: process.env.FRONTEND_HOST,
     credentials: true,
     preflightContinue: true
