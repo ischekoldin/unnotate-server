@@ -15,18 +15,16 @@ const pool = require('./db/index');
 
 app.use(router);
 
-
-
 const CORS_OPTIONS = {
     origin: process.env.FRONTEND_HOST,
     credentials: true,
     preflightContinue: true
 };
+
 let REFRESH_TOKEN_COOKIE_OPTIONS;
 
 if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
     REFRESH_TOKEN_COOKIE_OPTIONS = { expires: utils.cookieExpiresIn(14), httpOnly: true, sameSite: "lax"};
-
 } else {
     REFRESH_TOKEN_COOKIE_OPTIONS = { expires: utils.cookieExpiresIn(14), httpOnly: true, sameSite: "none", secure: true};
 }
@@ -50,20 +48,19 @@ app.post ("/signup", async (req, res) => {
             "OR user_email = $2", [name, email]);
         usersWithThisNameOrEmail = usersWithThisNameOrEmail.rowCount;
 
-
         if (usersWithThisNameOrEmail === 0) {
             const saltRounds = 10;
             await bcrypt.hash(password, saltRounds, function (err, hashedPassword) {
                 pool.query ("INSERT INTO users (user_name, user_email, user_password) VALUES ($1, $2, $3)",
                     [name, email, hashedPassword]);
             });
-
             res.send('User successfully added');
 
         } else {
             errors.push({place: "post /signup", error: `User with name ${name} or email ${email} already exists`});
             res.sendStatus(403);
         }
+
     } catch (err) {
         errors.push({place: "post /signup", error: err.message});
     }
@@ -75,7 +72,6 @@ async function checkPassword (name, password) {
         const numberOfUsers = dbResponse.rowCount;
 
         if (numberOfUsers === 1) {
-
             const hashedPassword = dbResponse.rows[0].user_password;
             const isPasswordCorrect = await bcrypt.compare(password, hashedPassword);
 
@@ -116,7 +112,7 @@ app.post ("/login", async (req, res) => {
                const accessToken = await generateAccessToken({name});
                const refreshToken = await jwt.sign(name, process.env.REFRESH_TOKEN_SECRET);
 
-                await pool.query("SELECT * FROM valid_refresh_tokens WHERE user_name = $1", [name]);
+                //await pool.query("SELECT * FROM valid_refresh_tokens WHERE user_name = $1", [name]);
 
 
                await refreshTokens.push(refreshToken);
@@ -140,14 +136,13 @@ app.post ("/login", async (req, res) => {
 
 });
 
-
-
-
+// refresh access token
 app.get("/token", (req, res) => {
 
     const refreshToken = req.cookies.refreshToken;
-    if (!refreshToken) return res.sendStatus(401);
-    if (!refreshTokens.includes(refreshToken)) return res.sendStatus(401);
+
+    if (!refreshToken || !refreshTokens.includes(refreshToken)) return res.sendStatus(401);
+
     jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
         if (err) return res.send(err.message);
         const accessToken = generateAccessToken({name: user});
@@ -165,7 +160,6 @@ app.delete("/logout", (req, res) => {
 app.get("/notes", authenticateToken, async (req, res) => {
 
     const dbResponse = await pool.query("SELECT * FROM notes WHERE note_owner_name = $1", [req.user.name]);
-    console.log(`Name to fetch notes for ${req.user.name}`);
     res.send(dbResponse);
 });
 
@@ -242,10 +236,6 @@ app.post("/auth/change_password", async (req, res) => {
     }
 });
 
-app.get ("/users", async (req, res) => {
-    const dbUsers = await pool.query("SELECT * FROM users");
-    res.json(dbUsers);
-});
 
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
@@ -269,6 +259,7 @@ function generateAccessToken(user) {
 app.get('/errors', (req, res) => {
     res.send(errors && errors);
 });
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
