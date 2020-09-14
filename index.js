@@ -17,23 +17,17 @@ app.use(router);
 
 
 
-let CORS_OPTIONS;
+let CORS_OPTIONS = CORS_OPTIONS = {
+    origin: process.env.FRONTEND_HOST,
+    credentials: true,
+    preflightContinue: true
+};
 let REFRESH_TOKEN_COOKIE_OPTIONS;
 
 if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
-    CORS_OPTIONS = {
-        origin: "http://localhost:3000",
-        credentials: true,
-        preflightContinue: true
-    };
     REFRESH_TOKEN_COOKIE_OPTIONS = { expires: utils.cookieExpiresIn(14), httpOnly: true, sameSite: "lax"};
 
 } else {
-    CORS_OPTIONS = {
-        origin: "https://unnotate-client.herokuapp.com",
-        credentials: true,
-        preflightContinue: true
-    };
     REFRESH_TOKEN_COOKIE_OPTIONS = { expires: utils.cookieExpiresIn(14), httpOnly: true, sameSite: "none", secure: true};
 }
 
@@ -101,6 +95,9 @@ async function checkPassword (name, password) {
     }
 }
 
+// TODO this should go to the DB, not here
+let refreshTokens = [];
+
 app.post ("/login", async (req, res) => {
 
     const { name, password } = req.body;
@@ -118,6 +115,10 @@ app.post ("/login", async (req, res) => {
             if (isPasswordCorrect) {
                const accessToken = await generateAccessToken({name});
                const refreshToken = await jwt.sign(name, process.env.REFRESH_TOKEN_SECRET);
+
+                await pool.query("SELECT * FROM valid_refresh_tokens WHERE user_name = $1", [name]);
+
+
                await refreshTokens.push(refreshToken);
 
                res.cookie('refreshToken', refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
@@ -139,7 +140,7 @@ app.post ("/login", async (req, res) => {
 
 });
 
-let refreshTokens = [];
+
 
 
 app.get("/token", (req, res) => {
