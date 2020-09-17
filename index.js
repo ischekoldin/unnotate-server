@@ -21,6 +21,8 @@ const CORS_OPTIONS = {
     preflightContinue: true
 };
 
+const USER_NAME_COOKIE_OPTIONS = { expires: utils.cookieExpiresIn(14), httpOnly: false, sameSite: "none", secure: true};
+
 let REFRESH_TOKEN_COOKIE_OPTIONS;
 
 if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
@@ -117,6 +119,7 @@ app.post ("/login", async (req, res) => {
 
                await refreshTokens.push(refreshToken);
 
+               res.cookie('unnotateUserName', name, USER_NAME_COOKIE_OPTIONS);
                res.cookie('refreshToken', refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
                res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
@@ -143,10 +146,11 @@ app.get("/token", (req, res) => {
 
     if (!refreshToken || !refreshTokens.includes(refreshToken)) return res.sendStatus(401);
 
-    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
+    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, name) => {
         if (err) return res.send(err.message);
-        const accessToken = generateAccessToken({name: user});
-        return res.json({accessToken: accessToken, name: user});
+        res.cookie('unnotateUserName', name, USER_NAME_COOKIE_OPTIONS);
+        const accessToken = generateAccessToken({name: name});
+        return res.json({accessToken: accessToken, name: name});
     });
 });
 
