@@ -21,6 +21,8 @@ const CORS_OPTIONS = {
     preflightContinue: true
 };
 
+const USER_NAME_COOKIE_OPTIONS = { expires: utils.cookieExpiresIn(14), httpOnly: false, sameSite: "none", secure: true};
+
 let REFRESH_TOKEN_COOKIE_OPTIONS;
 
 if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
@@ -91,8 +93,7 @@ async function checkPassword (name, password) {
     }
 }
 
-// TODO this should go to the DB, not here
-let refreshTokens = [];
+
 
 app.post ("/login", async (req, res) => {
 
@@ -112,13 +113,19 @@ app.post ("/login", async (req, res) => {
                const accessToken = await generateAccessToken({name});
                const refreshToken = await jwt.sign(name, process.env.REFRESH_TOKEN_SECRET);
 
-                //await pool.query("SELECT * FROM valid_refresh_tokens WHERE user_name = $1", [name]);
+               const dbValidTokens = await pool.query("SELECT * FROM valid_refresh_tokens WHERE user_name = $1", [name]);
+               const hasUserGotValidToken = dbValidTokens.rowCount > 0;
+
+               if (!hasUserGotValidToken) {
+                   let date = new Date(Date.now());
+                   await pool.query("INSERT INTO valid_refresh_tokens (token, token_added, user_name) VALUES ($1, $2, $3)", [refreshToken, date, name]);
+               }
 
 
-               await refreshTokens.push(refreshToken);
 
+               res.cookie('unnotateUserName', name, USER_NAME_COOKIE_OPTIONS);
                res.cookie('refreshToken', refreshToken, REFRESH_TOKEN_COOKIE_OPTIONS);
-               res.json({ accessToken: accessToken, refreshToken: refreshToken });
+               await res.json({ accessToken: accessToken, refreshToken: refreshToken });
 
             } else {
                 errors.push({place: "post /login", error: "Password is incorrect"});
@@ -141,18 +148,34 @@ app.get("/token", (req, res) => {
 
     const refreshToken = req.cookies.refreshToken;
 
-    if (!refreshToken || !refreshTokens.includes(refreshToken)) return res.sendStatus(401);
+    if (!refreshToken) return res.sendStatus(401);
 
-    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
+    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, name) => {
         if (err) return res.send(err.message);
-        const accessToken = generateAccessToken({name: user});
-        return res.json({accessToken: accessToken, name: user});
+
+        const validRefreshTokensInDb = await pool.query("SELECT * FROM valid_refresh_tokens WHERE user_name = $1", [name]);
+
+        if (validRefreshTokensInDb.rowCount > 0) {
+            const validRefreshTokenInDb = validRefreshTokensInDb.rows[0].token;
+            if (validRefreshTokenInDb !== refreshToken) return res.sendStatus(401);
+        }
+
+        res.cookie('unnotateUserName', name, USER_NAME_COOKIE_OPTIONS);
+        const accessToken = generateAccessToken({name: name});
+        return res.json({accessToken: accessToken, name: name});
     });
 });
 
 
-app.delete("/logout", (req, res) => {
-    refreshTokens = refreshTokens.filter(token => token !== req.cookies.refreshToken);
+app.delete("/logout", async (req, res) => {
+    const refreshToken = req.cookies.refreshToken;
+    const validRefreshTokensInDb = await pool.query("SELECT * FROM valid_refresh_tokens WHERE token = $1",
+        [refreshToken]);
+
+    if (validRefreshTokensInDb.rowCount > 0) {
+        await pool.query("DELETE FROM valid_refresh_tokens WHERE token = $1", [refreshToken]);
+    }
+
     res.sendStatus(204);
 });
 
